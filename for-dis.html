@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            display: flex;
+            text-align: center;
+            background-color: #262626;
+            color: #fff;
+        }
+
+        table {
+            border-collapse: collapse;
+            height: 100%;
+            font-size: 120px;
+            border-color: #626262;
+            border-collapse: collapse;
+        }
+
+        tr {
+            height: 180px;
+            line-height: 180px;
+        }
+
+        td {
+            width: 960px;
+            overflow: hidden;
+        }
+
+        #cap {
+            font-size: 50px;
+        }
+
+        #big {
+            font-size: 240px;
+
+            width: 100%;
+            text-align: center;
+
+            white-space: nowrap;
+            overflow: hidden;
+
+            line-height: 1;
+
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 呼び出し中エリア -->
+    <div class="container">
+        <div id="cap">呼び出し中</div>
+        <table border="1" id="calledTable">
+            <!-- 2つの列を結合して、2行分（高さ360px）の巨大セルを作る -->
+            <tr>
+                <td colspan="2" rowspan="2" class="big-cell" id="big"></td>
+            </tr>
+            <!-- rowspan="2" によって吸収されるため、2行目は td を書かない（trのみ定義） -->
+            <tr></tr>
+            <tr>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+            </tr>
+        </table>
+    </div>
+    <div>
+        <div id="cap">準備中</div>
+        <table border="1" id="waitingTable">
+            <tr>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+            </tr>
+
+        </table>
+    </div>
+
+    <script type="module">
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+        import {
+            getFirestore,
+            collection,
+            onSnapshot
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+
+            apiKey: "YOUR_API_KEY",
+            authDomain: "call-system-838c7.firebaseapp.com",
+            projectId: "call-system-838c7",
+            storageBucket: "call-system-838c7.appspot.com",
+            messagingSenderId: "47666494925",
+            appId: "YOUR_APP_ID"
+
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        function fillTable(tableId, data) {
+
+            const cells = document.querySelectorAll(
+                `#${tableId} td:not(.big-cell)`
+            );
+
+            cells.forEach((cell, index) => {
+                cell.textContent = data[index]?.id ?? "";
+            });
+        }
+
+        onSnapshot(
+            collection(db, "people"),
+            (snapshot) => {
+
+                const allTickets = snapshot.docs.map(doc => ({
+                    id: Number(doc.id),
+                    ...doc.data()
+                }));
+
+                const calledTickets = allTickets
+                    .filter(t => t.call === true)
+                    .sort((a, b) => b.id - a.id);
+
+                const waitingTickets = allTickets
+                    .filter(t => t.call === false)
+                    .sort((a, b) => b.id - a.id);
+
+                // 一番新しい呼び出し番号を特大表示
+                document.getElementById("big").textContent =
+                    calledTickets.length
+                        ? calledTickets[0].id
+                        : "---";
+
+                // 呼び出し中テーブルは2番目以降
+                fillTable(
+                    "calledTable",
+                    calledTickets.slice(1)
+                );
+
+                // 準備中テーブル
+                fillTable(
+                    "waitingTable",
+                    waitingTickets
+                );
+
+            }
+        );
+
+
+
+
+    </script>
+</body>
+
+</html>

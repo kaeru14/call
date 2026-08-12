@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>整理券発券システム</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #f0f2f5;
+            font-family: "Yu Gothic", "Meiryo", sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .ticket {
+            width: 90%;
+            max-width: 500px;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .15);
+            padding: 40px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 28px;
+            color: #666;
+        }
+
+        .number {
+            font-size: 120px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #222;
+        }
+
+        .status {
+            font-size: 30px;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .waiting {
+            background: #fff4cc;
+            color: #9c6a00;
+        }
+
+        .calling {
+            background: #d8f5d0;
+            color: #006400;
+        }
+
+        button {
+            margin-top: 25px;
+            font-size: 24px;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            background: #0066cc;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin-top: 15px;
+            color: #666;
+        }
+
+        #completeScreen {
+
+            position: fixed;
+            top: 0;
+            left: 0;
+
+            width: 100vw;
+            height: 100vh;
+
+            background: #fff;
+
+            display: none;
+
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+            z-index: 9999;
+        }
+
+        #checkMark {
+
+            font-size: 450px;
+            line-height: 1;
+
+            color: #00b050;
+
+            animation: pop 0.4s ease;
+        }
+
+        #completeMessage {
+
+            font-size: 72px;
+            font-weight: bold;
+
+            color: #00b050;
+        }
+
+        @keyframes pop {
+
+            0% {
+                transform: scale(0);
+            }
+
+            70% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+
+        }
+
+        #completeScreen {
+
+            position: fixed;
+            inset: 0;
+
+            background: #fff;
+
+            display: none;
+
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+            z-index: 9999;
+        }
+
+        #checkSvg {
+
+            width: 100px;
+            height: 100px;
+        }
+
+        .circle {
+
+            fill: none;
+            stroke: #00b050;
+            stroke-width: 4;
+
+            stroke-dasharray: 300;
+            stroke-dashoffset: 300;
+        }
+
+        .check {
+
+            fill: none;
+            stroke: #00b050;
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+        }
+
+        #completeScreen.show .circle {
+
+            animation:
+                drawCircle .6s ease forwards;
+        }
+
+        #completeScreen.show .check {
+
+            animation:
+                drawCheck .4s ease forwards;
+            animation-delay: .6s;
+        }
+
+        #completeMessage {
+
+            font-size: 40px;
+            font-weight: bold;
+
+            color: #00b050;
+
+            opacity: 0;
+        }
+
+        #completeScreen.show #completeMessage {
+
+            animation:
+                fadeIn .4s ease forwards;
+            animation-delay: 1s;
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        @keyframes drawCircle {
+
+            to {
+                stroke-dashoffset: 0;
+            }
+
+        }
+
+        @keyframes drawCheck {
+
+            to {
+                stroke-dashoffset: 0;
+            }
+
+        }
+
+        @keyframes fadeIn {
+
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="ticket">
+
+        <div class="title">受付番号</div>
+
+        <div id="number" class="number">---</div>
+
+        <div id="qrcode"></div>
+
+        <div id="status" class="status waiting">
+            未発券
+        </div>
+
+        <button id="issueBtn">
+            整理券を発券する
+        </button>
+
+        <div class="message">
+            お呼びするまでこの画面を閉じないでください
+        </div>
+
+        <div id="completeScreen">
+
+            <svg id="checkSvg" viewBox="0 0 100 100">
+
+                <circle cx="50" cy="50" r="45" class="circle" />
+
+                <path d="M25 52 L43 70 L75 35" class="check" />
+
+            </svg>
+
+            <div id="completeMessage">
+                受付完了しました
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script type="module">
+
+        import { initializeApp }
+            from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            setDoc,
+            runTransaction,
+            serverTimestamp,
+            onSnapshot
+        }
+            from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+
+            apiKey: "YOUR_API_KEY",
+            authDomain: "call-system-838c7.firebaseapp.com",
+            projectId: "call-system-838c7",
+            storageBucket: "call-system-838c7.appspot.com",
+            messagingSenderId: "47666494925",
+            appId: "YOUR_APP_ID"
+
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const numberEl =
+            document.getElementById("number");
+
+        const statusEl =
+            document.getElementById("status");
+
+        const issueBtn =
+            document.getElementById("issueBtn");
+
+        let ticketToken =
+            localStorage.getItem("ticketToken");
+
+        if (!ticketToken) {
+
+            ticketToken =
+                crypto.randomUUID();
+
+        }
+
+        const ticketNumber =
+            await checkStoredTicket();
+
+        if (ticketNumber) {
+
+            numberEl.textContent =
+                ticketNumber;
+
+            issueBtn.disabled = true;
+
+            issueBtn.textContent =
+                "発券済";
+
+            showQRCode(
+                ticketNumber,
+                ticketToken
+            );
+
+            watchTicket(
+                ticketNumber
+            );
+
+        }
+
+        issueBtn.addEventListener(
+            "click",
+            issueTicket
+        );
+
+        async function issueTicket() {
+
+            const counterRef =
+                doc(
+                    db,
+                    "system",
+                    "counter"
+                );
+
+            const newNumber =
+                await runTransaction(
+                    db,
+                    async (
+                        transaction
+                    ) => {
+
+                        const counterSnap =
+                            await transaction.get(
+                                counterRef
+                            );
+
+                        let current = 100;
+
+                        if (
+                            counterSnap.exists()
+                        ) {
+
+                            current =
+                                counterSnap.data()
+                                    .current || 100;
+
+                        }
+
+                        const next =
+                            current + 1;
+
+                        transaction.set(
+                            doc(
+                                db,
+                                "people",
+                                String(next)
+                            ),
+                            {
+                                call: false,
+                                completed: false,
+                                token: ticketToken,
+                                time: serverTimestamp()
+                            }
+                        );
+
+                        if (
+                            counterSnap.exists()
+                        ) {
+
+                            transaction.update(
+                                counterRef,
+                                {
+                                    current:
+                                        next
+                                }
+                            );
+
+                        } else {
+
+                            transaction.set(
+                                counterRef,
+                                {
+                                    current:
+                                        next
+                                }
+                            );
+
+                        }
+
+                        return next;
+
+                    }
+                );
+
+            localStorage.setItem(
+                "ticketNumber",
+                String(newNumber)
+            );
+
+            localStorage.setItem(
+                "ticketToken",
+                ticketToken
+            );
+
+            numberEl.textContent =
+                newNumber;
+
+            issueBtn.disabled = true;
+
+            issueBtn.textContent =
+                "発券済";
+
+            showQRCode(
+                String(newNumber),
+                ticketToken
+            );
+
+            watchTicket(
+                String(newNumber)
+            );
+
+        }
+
+        function showQRCode(
+            ticketId,
+            token
+        ) {
+
+            const qrData =
+                JSON.stringify({
+                    id: ticketId,
+                    token: token
+                });
+
+            const qrArea =
+                document.getElementById(
+                    "qrcode"
+                );
+
+            qrArea.innerHTML = "";
+
+            new QRCode(
+                qrArea,
+                {
+                    text: qrData,
+                    width: 200,
+                    height: 200
+                }
+            );
+
+        }
+
+        function watchTicket(
+            ticketId
+        ) {
+
+            onSnapshot(
+                doc(
+                    db,
+                    "people",
+                    ticketId
+                ),
+
+                (snap) => {
+
+                    if (!snap.exists()) {
+
+                        localStorage.removeItem(
+                            "ticketNumber"
+                        );
+
+                        localStorage.removeItem(
+                            "ticketToken"
+                        );
+
+                        return;
+
+                    }
+
+                    const data =
+                        snap.data();
+
+                    if (data.call) {
+
+                        statusEl.textContent =
+                            "呼出中";
+
+                        statusEl.className =
+                            "status calling";
+
+                    } else {
+
+                        statusEl.textContent =
+                            "準備中";
+
+                        statusEl.className =
+                            "status waiting";
+
+                    }
+
+                    if (
+                        data.completed
+                    ) {
+
+                        const screen =
+                            document.getElementById(
+                                "completeScreen"
+                            );
+
+                        screen.style.display =
+                            "flex";
+
+                        requestAnimationFrame(
+                            () => {
+
+                                screen.classList.add(
+                                    "show"
+                                );
+
+                            }
+                        );
+
+                        setTimeout(
+                            () => {
+
+                                localStorage.removeItem(
+                                    "ticketNumber"
+                                );
+
+                                localStorage.removeItem(
+                                    "ticketToken"
+                                );
+
+                            },
+                            3000
+                        );
+
+                    }
+
+                }
+
+            );
+
+        }
+
+        async function checkStoredTicket() {
+
+            const ticketNumber =
+                localStorage.getItem(
+                    "ticketNumber"
+                );
+
+            if (!ticketNumber) {
+
+                return null;
+
+            }
+
+            const ticketSnap =
+                await getDoc(
+                    doc(
+                        db,
+                        "people",
+                        ticketNumber
+                    )
+                );
+
+            if (
+                !ticketSnap.exists()
+            ) {
+
+                localStorage.removeItem(
+                    "ticketNumber"
+                );
+
+                localStorage.removeItem(
+                    "ticketToken"
+                );
+
+                return null;
+
+            }
+
+            const data =
+                ticketSnap.data();
+
+            if (!data.time) {
+
+                return null;
+
+            }
+
+            const issuedAt =
+                data.time.toDate();
+
+            const diffHours =
+                (
+                    new Date() -
+                    issuedAt
+                ) /
+                1000 /
+                60 /
+                60;
+
+            if (
+                diffHours >= 24
+            ) {
+
+                localStorage.removeItem(
+                    "ticketNumber"
+                );
+
+                localStorage.removeItem(
+                    "ticketToken"
+                );
+
+                return null;
+
+            }
+
+            return ticketNumber;
+
+        }
+
+    </script>
+
+</body>
+
+</html>

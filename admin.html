@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+    <meta charset="UTF-8">
+    <title>受付管理</title>
+
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+        }
+
+        #reader {
+            width: 500px;
+            margin: auto;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 50px;
+        }
+
+        #successScreen {
+
+            position: fixed;
+            inset: 0;
+
+            background: #fff;
+
+            display: none;
+
+            justify-content: center;
+            align-items: center;
+
+            z-index: 99999;
+        }
+
+        #successScreen.show {
+            display: flex;
+        }
+
+        #successScreen #checkSvg {
+            width: 100px;
+            height: 100px;
+        }
+
+        .circle {
+
+            fill: none;
+            stroke: #00b050;
+            stroke-width: 4;
+
+            stroke-dasharray: 300;
+            stroke-dashoffset: 300;
+        }
+
+        .check {
+
+            fill: none;
+            stroke: #00b050;
+            stroke-width: 6;
+
+            stroke-linecap: round;
+            stroke-linejoin: round;
+
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+        }
+
+        #successScreen.show .circle {
+            animation: drawCircle .5s ease forwards;
+        }
+
+        #successScreen.show .check {
+            animation: drawCheck .3s ease forwards;
+            animation-delay: .5s;
+        }
+
+        @keyframes drawCircle {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes drawCheck {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+    </style>
+
+<body>
+
+    <div id="successScreen">
+
+        <svg id="checkSvg" viewBox="0 0 100 100">
+
+            <circle cx="50" cy="50" r="45" class="circle" />
+
+            <path d="M25 52 L43 70 L75 35" class="check" />
+
+        </svg>
+
+    </div>
+</body>
+
+<script type="module">
+
+    import { initializeApp }
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+    import {
+        getFirestore,
+        collection,
+        doc,
+        getDoc,
+        updateDoc,
+        onSnapshot
+    }
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    const firebaseConfig = {
+
+        apiKey: "YOUR_API_KEY",
+        authDomain: "call-system-838c7.firebaseapp.com",
+        projectId: "call-system-838c7",
+        storageBucket: "call-system-838c7.appspot.com",
+        messagingSenderId: "47666494925",
+        appId: "YOUR_APP_ID"
+
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function completeTicket(ticket) {
+
+        try {
+
+            await updateDoc(
+                doc(
+                    db,
+                    "people",
+                    ticket
+                ),
+                {
+                    completed: true
+                }
+            );
+
+            document.getElementById(
+                "result"
+            ).textContent =
+                `${ticket} 受付完了`;
+
+        } catch (e) {
+
+            document.getElementById(
+                "result"
+            ).textContent =
+                "番号が存在しません";
+
+        }
+
+    }
+
+    const scanner =
+        new Html5QrcodeScanner(
+            "reader",
+            {
+                fps: 10,
+                qrbox: 250
+            }
+        );
+
+    scanner.render(
+        async (decodedText) => {
+
+            const data =
+                JSON.parse(decodedText);
+
+            const ticketId =
+                data.id;
+
+            const token =
+                data.token;
+
+            const snap =
+                await getDoc(
+                    doc(
+                        db,
+                        "people",
+                        ticketId
+                    )
+                );
+
+            if (!snap.exists()) {
+                return;
+            }
+
+            const ticket =
+                snap.data();
+
+            if (ticket.token !== token) {
+
+                alert(
+                    "無効な整理券です"
+                );
+
+                return;
+            }
+
+            const screen =
+                document.getElementById(
+                    "successScreen"
+                );
+
+            screen.classList.add("show");
+
+            setTimeout(() => {
+
+                screen.classList.remove(
+                    "show"
+                );
+
+                scanning = true;
+
+            }, 2000);
+
+            await updateDoc(
+                doc(
+                    db,
+                    "people",
+                    ticketId
+                ),
+                {
+                    completed: true
+                }
+            );
+
+        }
+    );
+
+</script>
+
+</head>
+
+<body>
+
+    <h1>QRコードを読み込んでください</h1>
+
+    <div id="reader"></div>
+
+    <div id="result"></div>
+
+</body>
+
+</html>

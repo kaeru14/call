@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>呼出管理システム</title>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        .mode {
+            margin-bottom: 50px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .ticketBtn {
+            font-size: 40px;
+            width: 180px;
+            height: 100px;
+            margin: 10px;
+            cursor: pointer;
+        }
+
+        .called {
+            background: #4caf50;
+            color: white;
+        }
+
+        .waiting {
+            background: #2196f3;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="mode">
+
+        <h1>管理画面</h1>
+
+        <table id="adminTable">
+            <thead>
+                <tr>
+                    <th>番号</th>
+                    <th>状態</th>
+                    <th>発券時刻</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <hr>
+
+    <div class="mode">
+
+        <h1>呼出ボタン</h1>
+
+        <div id="buttonArea"></div>
+
+    </div>
+
+    <script type="module">
+
+        import { initializeApp }
+            from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+        import {
+            getFirestore,
+            collection,
+            doc,
+            updateDoc,
+            onSnapshot
+        }
+            from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+
+            apiKey: "YOUR_API_KEY",
+            authDomain: "call-system-838c7.firebaseapp.com",
+            projectId: "call-system-838c7",
+            storageBucket: "call-system-838c7.appspot.com",
+            messagingSenderId: "47666494925",
+            appId: "YOUR_APP_ID"
+
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const tbody =
+            document.querySelector("#adminTable tbody");
+
+        const buttonArea =
+            document.getElementById("buttonArea");
+
+        onSnapshot(
+            collection(db, "people"),
+            (snapshot) => {
+
+                tbody.innerHTML = "";
+                buttonArea.innerHTML = "";
+
+                const data = snapshot.docs
+                    .map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }))
+                    .sort(
+                        (a, b) =>
+                            Number(b.id) - Number(a.id)
+                    );
+
+                data.forEach(ticket => {
+
+                    // ===================
+                    // 管理画面
+                    // ===================
+
+                    const tr =
+                        document.createElement("tr");
+
+                    const date =
+                        ticket.time?.toDate()
+                            ?.toLocaleString("ja-JP")
+                        ?? "";
+
+                    tr.innerHTML = `
+                <td>${ticket.id}</td>
+                <td>
+                    <input
+                        type="checkbox"
+                        ${ticket.call ? "checked" : ""}
+                    >
+                </td>
+                <td>${date}</td>
+            `;
+
+                    const checkbox =
+                        tr.querySelector("input");
+
+                    checkbox.addEventListener(
+                        "change",
+                        async () => {
+
+                            await updateDoc(
+                                doc(
+                                    db,
+                                    "people",
+                                    ticket.id
+                                ),
+                                {
+                                    call:
+                                        checkbox.checked
+                                }
+                            );
+
+                        }
+                    );
+
+                    tbody.appendChild(tr);
+
+                    // ===================
+                    // 呼出ボタン
+                    // ===================
+
+                    if (!ticket.call) {
+
+                        const btn =
+                            document.createElement(
+                                "button"
+                            );
+
+                        btn.className =
+                            "ticketBtn waiting";
+
+                        btn.textContent =
+                            ticket.id;
+
+                        btn.addEventListener(
+                            "click",
+                            async () => {
+
+                                await updateDoc(
+                                    doc(
+                                        db,
+                                        "people",
+                                        ticket.id
+                                    ),
+                                    {
+                                        call: true
+                                    }
+                                );
+
+                            }
+                        );
+
+                        buttonArea.appendChild(
+                            btn
+                        );
+                    }
+
+                });
+
+            }
+        );
+
+    </script>
+
+</body>
+
+</html>
