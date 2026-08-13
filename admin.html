@@ -2,8 +2,8 @@
 <html lang="ja">
 
 <head>
-
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>受付管理</title>
 
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -12,30 +12,64 @@
         body {
             font-family: sans-serif;
             text-align: center;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
         }
 
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+        }
+
+        /* 読み取りエリアのベース設定 */
         #reader {
-            width: 500px;
+            width: 100%;
+            max-width: 800px; /* PCでの最大幅を大きく拡張 */
             margin: auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
 
         #result {
-            margin-top: 20px;
-            font-size: 50px;
+            margin-top: 25px;
+            font-size: 2rem;
+            font-weight: bold;
         }
 
-        #successScreen {
+        /* --- 画面サイズに応じたレスポンシブ対応 --- */
 
+        /* スマホ向け（画面幅 600px 未満） */
+        @media (max-width: 599px) {
+            h1 {
+                font-size: 1.4rem;
+            }
+            #result {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* PC・タブレット向け大画面（画面幅 600px 以上） */
+        @media (min-width: 600px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+            #result {
+                font-size: 3rem;
+            }
+        }
+
+        /* 成功アニメーション用の画面 */
+        #successScreen {
             position: fixed;
             inset: 0;
-
             background: #fff;
-
             display: none;
-
             justify-content: center;
             align-items: center;
-
             z-index: 99999;
         }
 
@@ -44,29 +78,24 @@
         }
 
         #successScreen #checkSvg {
-            width: 100px;
-            height: 100px;
+            width: 150px; /* 大画面で見やすいようチェックマークも大きく */
+            height: 150px;
         }
 
         .circle {
-
             fill: none;
             stroke: #00b050;
             stroke-width: 4;
-
             stroke-dasharray: 300;
             stroke-dashoffset: 300;
         }
 
         .check {
-
             fill: none;
             stroke: #00b050;
             stroke-width: 6;
-
             stroke-linecap: round;
             stroke-linejoin: round;
-
             stroke-dasharray: 100;
             stroke-dashoffset: 100;
         }
@@ -92,169 +121,119 @@
             }
         }
     </style>
+</head>
 
 <body>
 
     <div id="successScreen">
-
         <svg id="checkSvg" viewBox="0 0 100 100">
-
             <circle cx="50" cy="50" r="45" class="circle" />
-
             <path d="M25 52 L43 70 L75 35" class="check" />
-
         </svg>
-
     </div>
-</body>
-
-<script type="module">
-
-    import { initializeApp }
-        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-
-    import {
-        getFirestore,
-        collection,
-        doc,
-        getDoc,
-        updateDoc,
-        onSnapshot
-    }
-        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    const firebaseConfig = {
-
-        apiKey: "YOUR_API_KEY",
-        authDomain: "call-system-838c7.firebaseapp.com",
-        projectId: "call-system-838c7",
-        storageBucket: "call-system-838c7.appspot.com",
-        messagingSenderId: "47666494925",
-        appId: "YOUR_APP_ID"
-
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    async function completeTicket(ticket) {
-
-        try {
-
-            await updateDoc(
-                doc(
-                    db,
-                    "people",
-                    ticket
-                ),
-                {
-                    completed: true
-                }
-            );
-
-            document.getElementById(
-                "result"
-            ).textContent =
-                `${ticket} 受付完了`;
-
-        } catch (e) {
-
-            document.getElementById(
-                "result"
-            ).textContent =
-                "番号が存在しません";
-
-        }
-
-    }
-
-    const scanner =
-        new Html5QrcodeScanner(
-            "reader",
-            {
-                fps: 10,
-                qrbox: 250
-            }
-        );
-
-    scanner.render(
-        async (decodedText) => {
-
-            const data =
-                JSON.parse(decodedText);
-
-            const ticketId =
-                data.id;
-
-            const token =
-                data.token;
-
-            const snap =
-                await getDoc(
-                    doc(
-                        db,
-                        "people",
-                        ticketId
-                    )
-                );
-
-            if (!snap.exists()) {
-                return;
-            }
-
-            const ticket =
-                snap.data();
-
-            if (ticket.token !== token) {
-
-                alert(
-                    "無効な整理券です"
-                );
-
-                return;
-            }
-
-            const screen =
-                document.getElementById(
-                    "successScreen"
-                );
-
-            screen.classList.add("show");
-
-            setTimeout(() => {
-
-                screen.classList.remove(
-                    "show"
-                );
-
-                scanning = true;
-
-            }, 2000);
-
-            await updateDoc(
-                doc(
-                    db,
-                    "people",
-                    ticketId
-                ),
-                {
-                    completed: true
-                }
-            );
-
-        }
-    );
-
-</script>
-
-</head>
-
-<body>
 
     <h1>QRコードを読み込んでください</h1>
 
     <div id="reader"></div>
 
     <div id="result"></div>
+
+    <script type="module">
+
+        import { initializeApp }
+            from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            updateDoc,
+            deleteDoc
+        }
+            from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "call-system-838c7.firebaseapp.com",
+            projectId: "call-system-838c7",
+            storageBucket: "call-system-838c7.appspot.com",
+            messagingSenderId: "47666494925",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 数秒後に削除するミリ秒数（3秒後）
+        const DELETE_DELAY_MS = 3000;
+
+        // 画面幅に応じてQRコード読み取り枠の大きさを動的に調整
+        const qrboxSize = window.innerWidth < 600 ? 200 : 350;
+
+        const scanner = new Html5QrcodeScanner(
+            "reader",
+            {
+                fps: 10,
+                qrbox: qrboxSize
+            }
+        );
+
+        scanner.render(
+            async (decodedText) => {
+
+                try {
+                    const data = JSON.parse(decodedText);
+                    const ticketId = data.id;
+                    const token = data.token;
+
+                    const docRef = doc(db, "people", ticketId);
+                    const snap = await getDoc(docRef);
+
+                    if (!snap.exists()) {
+                        alert("データが存在しません");
+                        return;
+                    }
+
+                    const ticket = snap.data();
+
+                    if (ticket.token !== token) {
+                        alert("無効な整理券です");
+                        return;
+                    }
+
+                    // 成功画面を表示
+                    const screen = document.getElementById("successScreen");
+                    screen.classList.add("show");
+
+                    setTimeout(() => {
+                        screen.classList.remove("show");
+                    }, 2000);
+
+                    // 1. completed = true に更新
+                    await updateDoc(docRef, {
+                        completed: true
+                    });
+
+                    document.getElementById("result").textContent = `${ticketId} 受付完了`;
+
+                    // 2. 指定した秒数後にデータを削除
+                    setTimeout(async () => {
+                        try {
+                            await deleteDoc(docRef);
+                            console.log(`${ticketId} のデータを削除しました。`);
+                        } catch (e) {
+                            console.error("削除エラー:", e);
+                        }
+                    }, DELETE_DELAY_MS);
+
+                } catch (e) {
+                    console.error("読み取りエラー:", e);
+                }
+
+            }
+        );
+
+    </script>
 
 </body>
 
